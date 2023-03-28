@@ -47,7 +47,10 @@ Normally you would have one control plane node and `x` worker nodes.
 On a control plane node run:
 
 ```
-install-kubernetes.sh -c
+git clone https://github.com/ccollicutt/install-kubernetes
+cd install-kubernetes
+# Note the "-c" switch here
+./install-kubernetes.sh -c
 ```
 
 ### Worker Nodes
@@ -55,7 +58,9 @@ install-kubernetes.sh -c
 On a worker node run:
 
 ```
-install-kubernetes.sh
+git clone https://github.com/ccollicutt/install-kubernetes
+cd install-kubernetes
+./install-kubernetes.sh
 ```
 
 Then finally connect the worker node to the control plane node with the kubeadm command based on the output of the below which is run on the CP node.
