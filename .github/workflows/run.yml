@@ -1,0 +1,20 @@
+name: CI
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+jobs:
+  test-control-plane:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test installing Kubernetes control plane node
+        run: sudo ./install-kubernetes.sh -c -v
+  test-worker-node:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test installing Kubernetes worker node
+        run: sudo ./install-kubernetes.sh -v
