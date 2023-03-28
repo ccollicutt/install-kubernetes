@@ -16,7 +16,7 @@ Build at least two virtual machines, one for the control plane and one worker. A
 
 > NOTE: The script does not create the virtual machines (nodes). It only installs Kubernetes onto them. This means you can create the nodes in any way you want, but they must exist before running this script.
 
-#### Node Sizes
+#### Suggested Node Sizes
 
 Control Node
 * 4G memory
