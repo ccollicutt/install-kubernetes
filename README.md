@@ -28,6 +28,11 @@ Worker Nodes
 * 40G disk
 * 4 CPUs
 
+Combined Control Plane / Worker / Single Node "Cluster"
+* 8G memory
+* 40G disk
+* 4 CPUs
+
 ## Install Kubernetes Onto the Nodes
 
 Order of Operations
