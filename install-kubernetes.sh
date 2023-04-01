@@ -49,7 +49,7 @@ function show_help(){
 function check_linux_distribution(){
   echo "Checking Linux distribution"
   source /etc/lsb-release
-  if [ "$DISTRIB_RELEASE" != "22.04" ]; then
+  if [ "$DISTRIB_RELEASE" != "${UBUNTU_VERSION}" ]; then
       echo "ERROR: This script only works on Ubuntu 22.04"
       exit 1
   fi
@@ -358,6 +358,7 @@ WORKER_NODE=true
 CONTROL_NODE=false
 SINGLE_NODE=false
 VERBOSE=false
+UBUNTU_VERSION=22.04
 
 # software versions
 KUBE_VERSION=1.26.3
