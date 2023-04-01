@@ -71,6 +71,16 @@ kubeadm token create --print-join-command --ttl 0
 
 Run the output of that command on the worker nodes.
 
+### Single Node / Control Plane That Can Have Pods Scheduled On It
+
+If you'd like a single node "cluster", ie. be able to schedule pods on the control plane, then run with the `-s` option.
+
+```
+./install-kubernetes.sh -s
+```
+
+This will untaint the control plane node so that pods can be scheduled on it.
+
 ## Thanks
 
 This is based on the [Killer.sh CKS install script](https://github.com/killer-sh/cks-course-environment).

@@ -39,6 +39,8 @@ function show_help(){
     echo "$0 -c"
     echo "On a worker node, run with no options"
     echo "$0"
+    echo "For a single node, control plane and worker together, run with the '-s' option"
+    echo "$0 -s"
     echo "For verbose output, run with the '-v' option"
     echo "$0 -v"
 }
@@ -66,18 +68,22 @@ function disable_swap(){
 function remove_packages(){
   echo "Removing packages"
   {
+
+    # clear out any old kubernetes 
     if command -v kubeadm &> /dev/null
     then
       kubeadm reset -f || true
     fi
 
+    # clear out any old containers...
     if command -v crictl &> /dev/null
     then
       crictl rm --force $(crictl ps -a -q) || true
     fi
 
+    # remove packages
     apt-mark unhold kubelet kubeadm kubectl kubernetes-cni || true
-    # moby-runc is on github runner?
+    # moby-runc is on github runner? have to remove it
     apt-get remove -y moby-buildx moby-cli moby-compose moby-containerd moby-engine moby-runc || true
     apt-get autoremove -y
     apt-get remove -y docker.io containerd kubelet kubeadm kubectl kubernetes-cni || true
@@ -112,6 +118,8 @@ EOF
 ### install containerd from binary over apt installed version
 function install_containerd(){
   echo "Installing containerd"
+  # NOTE(curtis): to get containerd 1.7 deploy from tar file instead of apt
+  # think latest app is 1.6.12 
   {
     wget -q https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}-linux-amd64.tar.gz
     tar xvf containerd-${CONTAINERD_VERSION}-linux-amd64.tar.gz
@@ -268,6 +276,30 @@ function check_worker_services(){
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
+function configure_as_single_node(){
+  echo "Configuring as a single node cluster"
+  {
+    # this is a single node cluster, so we need to taint the master node
+    # so that pods can be scheduled on it
+    kubectl taint nodes --all node-role.kubernetes.io/master-
+  } 3>&2 >> $LOG_FILE 2>&1
+}
+
+function test_nginx_pod(){
+  echo "Deploying nginx pod"
+  {
+    # deploy a simple nginx pod
+    kubectl run --image nginx --namespace default nginx
+    # wait for all pods to be ready
+    kubectl wait \
+      --for=condition=Ready \
+      --all pods \
+      --timeout=180s
+    # delete the nginx pod
+    kubectl delete pod nginx
+  } 3>&2 >> $LOG_FILE 2>&1
+}
+
 #
 # MAIN
 #
@@ -288,13 +320,20 @@ function run_main(){
   start_services
 
   # only run this on the control plane node
-  if [ "${CONTROL_NODE}" == "true" ]; then
+  if [[ "${CONTROL_NODE}" == "true" || "${SINGLE_NODE}" == "true" ]]; then
     echo "Configuring control plane node..."
     kubeadm_init
     configure_kubeconfig
     install_cni
     wait_for_nodes
     echo "Install complete!"
+    if [[ "${SINGLE_NODE}" == "true" ]]; then
+      echo "Configuring as a single node cluster"
+      configure_as_single_node
+      echo "==> Testing nginx pod"
+      test_nginx_pod
+      echo "==> Single node cluster is ready!"
+    fi
 
     echo
     echo "### Command to add a worker node ###"
@@ -315,6 +354,7 @@ function run_main(){
 # assume it's a worker node by default
 WORKER_NODE=true
 CONTROL_NODE=false
+SINGLE_NODE=false
 VERBOSE=false
 
 # software versions
@@ -328,7 +368,7 @@ TMP_DIR=$(mktemp -d -t install-kubernetes-XXXXXXXXXX)
 readonly TMP_DIR
 LOG_FILE=${TMP_DIR}/install.log
 
-while getopts "h?cv" opt; do
+while getopts "h?cvs" opt; do
   case "$opt" in
     h|\?)
       show_help
@@ -339,6 +379,7 @@ while getopts "h?cv" opt; do
       ;;
     v) VERBOSE=true
       ;;
+    s) SINGLE_NODE=true
   esac
 done
 
