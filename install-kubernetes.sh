@@ -283,12 +283,13 @@ function configure_as_single_node(){
     # so that pods can be scheduled on it
     kubectl taint nodes --all \
       node-role.kubernetes.io/control-plane:NoSchedule-
+    echo "==> Sleeping for 10 seconds to allow taint to take effect..."
     sleep 10 # wait for the taint to take effect
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
 function test_nginx_pod(){
-  echo "Deploying nginx pod"
+  echo "Deploying test nginx pod"
   {
     # deploy a simple nginx pod
     kubectl run --image nginx --namespace default nginx
@@ -329,14 +330,12 @@ function run_main(){
     configure_kubeconfig
     install_cni
     wait_for_nodes
-    echo "Install complete!"
     if [[ "${SINGLE_NODE}" == "true" ]]; then
       echo "Configuring as a single node cluster"
       configure_as_single_node
-      echo "==> Testing nginx pod"
       test_nginx_pod
-      echo "==> Single node cluster is ready!"
     fi
+    echo "Install complete!"
 
     echo
     echo "### Command to add a worker node ###"
