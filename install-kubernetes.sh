@@ -281,7 +281,7 @@ function configure_as_single_node(){
   {
     # this is a single node cluster, so we need to taint the master node
     # so that pods can be scheduled on it
-    kubectl taint nodes --all node-role.kubernetes.io/master:NoSchedule-
+    kubectl taint nodes --all node-role.kubernetes.io/control-plane:NoSchedule-
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
