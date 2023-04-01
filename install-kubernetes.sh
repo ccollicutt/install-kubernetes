@@ -281,7 +281,9 @@ function configure_as_single_node(){
   {
     # this is a single node cluster, so we need to taint the master node
     # so that pods can be scheduled on it
-    kubectl taint nodes --all node-role.kubernetes.io/control-plane:NoSchedule-
+    kubectl taint nodes --all \
+      node-role.kubernetes.io/control-plane:NoSchedule-
+    sleep 10 # wait for the taint to take effect
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
@@ -294,9 +296,10 @@ function test_nginx_pod(){
     kubectl wait \
       --for=condition=Ready \
       --all pods \
+      --namespace default \
       --timeout=180s
     # delete the nginx pod
-    kubectl delete pod nginx
+    kubectl delete pod nginx --namespace default
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
