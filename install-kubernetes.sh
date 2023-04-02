@@ -121,11 +121,13 @@ function install_containerd(){
   # NOTE(curtis): to get containerd 1.7 deploy from tar file instead of apt
   # think latest app is 1.6.12 
   {
-    wget -q https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}-linux-amd64.tar.gz
-    tar xvf containerd-${CONTAINERD_VERSION}-linux-amd64.tar.gz
-    systemctl stop containerd
-    mv bin/* /usr/bin
-    rm -rf bin containerd-${CONTAINERD_VERSION}-linux-amd64.tar.gz
+    pushd ${TMP_DIR}
+      wget -q https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}-linux-amd64.tar.gz
+      tar xvf containerd-${CONTAINERD_VERSION}-linux-amd64.tar.gz
+      systemctl stop containerd
+      mv bin/* /usr/bin
+      rm -rf bin containerd-${CONTAINERD_VERSION}-linux-amd64.tar.gz
+    popd
     systemctl unmask containerd
     systemctl start containerd
   } 3>&2 >> $LOG_FILE 2>&1
