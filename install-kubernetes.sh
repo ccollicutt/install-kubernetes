@@ -237,11 +237,13 @@ function install_cni(){
 ### initialize the control plane
 function kubeadm_init(){
   echo "Initializing the Kubernetes control plane"
-  kubeadm init \
+  {
+    kubeadm init \
     --kubernetes-version=${KUBE_VERSION} \
     --ignore-preflight-errors=NumCPU \
     --skip-token-print \
-    --pod-network-cidr 192.168.0.0/16 3>&2 >> $LOG_FILE 2>&1
+    --pod-network-cidr 192.168.0.0/16 
+  } 3>&2 >> $LOG_FILE 2>&1
 }
 
 function wait_for_nodes(){
@@ -364,6 +366,7 @@ function run_main(){
     configure_kubeconfig
     install_cni
     wait_for_nodes
+    # now  test what was installed
     check_kubernetes_version
     if [[ "${SINGLE_NODE}" == "true" ]]; then
       echo "Configuring as a single node cluster"
