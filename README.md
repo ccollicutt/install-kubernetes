@@ -3,6 +3,8 @@
 This script will install Kubernetes on Ubuntu 22.04.
 
 ## Stack 
+
+* kubeadm
 * containerd - *NOTE: is installed from binary download, not apt package*
 * runc
 * Kubernetes from Ubuntu
