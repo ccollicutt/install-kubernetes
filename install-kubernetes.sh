@@ -310,29 +310,30 @@ function test_nginx_pod(){
 
 ### doublecheck the kubernetes version that is installed
 function check_kubernetes_version() {
+  echo "Checking Kubernetes version..."
   kubectl_version=$(kubectl version -o json)
 
   # use gitVersion
   client_version=$(echo "$kubectl_version" | jq '.clientVersion.gitVersion' | tr -d '"')
   server_version=$(echo "$kubectl_version" | jq '.serverVersion.gitVersion' | tr -d '"')
 
-  echo "Client Version: $client_version"
-  echo "Server Version: $server_version"
+  echo "==> Client version: $client_version"
+  echo "==> Server Version: $server_version"
 
   # check if kubectl and server are the same version
   if [[ "$client_version" != "$server_version" ]]; then
-    echo "Client and Server versions differ, exiting..."
+    echo "==> Client and server versions differ, exiting..."
     exit 1
   else
-    echo "Client and Server versions match"
+    echo "==> Client and server versions match"
   fi
 
   # check if what we asked for was what we got
   local kube_version="v${KUBE_VERSION}"
   if [[ "$kube_version" == "$server_version" ]]; then
-    echo "KUBE_VERSION matches the Server version."
+    echo "==> KUBE_VERSION matches the Server version."
   else
-    echo "KUBE_VERSION does not match the Server version, exiting..."
+    echo "==> KUBE_VERSION does not match the Server version, exiting..."
     exit 1
   fi
 
