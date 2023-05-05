@@ -309,7 +309,7 @@ function test_nginx_pod(){
 }
 
 ### doublecheck the kubernetes version that is installed
-function check_kubernetes_version() {
+function test_kubernetes_version() {
   echo "Checking Kubernetes version..."
   kubectl_version=$(kubectl version -o json)
 
@@ -324,16 +324,14 @@ function check_kubernetes_version() {
   if [[ "$client_version" != "$server_version" ]]; then
     echo "==> Client and server versions differ, exiting..."
     exit 1
-  else
-    echo "==> Client and server versions match"
   fi
 
   # check if what we asked for was what we got
   local kube_version="v${KUBE_VERSION}"
   if [[ "$kube_version" == "$server_version" ]]; then
-    echo "==> KUBE_VERSION matches the Server version."
+    echo "==> Requested KUBE_VERSION matches the server version."
   else
-    echo "==> KUBE_VERSION does not match the Server version, exiting..."
+    echo "==> Requested KUBE_VERSION does not match the server version, exiting..."
     exit 1
   fi
 
@@ -368,7 +366,7 @@ function run_main(){
     install_cni
     wait_for_nodes
     # now  test what was installed
-    check_kubernetes_version
+    test_kubernetes_version
     if [[ "${SINGLE_NODE}" == "true" ]]; then
       echo "Configuring as a single node cluster"
       configure_as_single_node
