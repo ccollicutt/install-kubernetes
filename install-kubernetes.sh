@@ -206,7 +206,7 @@ EOF
 function configure_kubelet(){
 echo "Configuring kubelet"
 cat <<EOF > /etc/default/kubelet
-KUBELET_EXTRA_ARGS="--container-runtime remote --container-runtime-endpoint unix:///run/containerd/containerd.sock"
+KUBELET_EXTRA_ARGS="--container-runtime-endpoint unix:///run/containerd/containerd.sock"
 EOF
 }
 
