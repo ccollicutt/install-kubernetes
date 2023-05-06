@@ -68,19 +68,6 @@ function disable_swap(){
 function remove_packages(){
   echo "Removing packages"
   {
-
-    # clear out any old kubernetes 
-    if command -v kubeadm &> /dev/null
-    then
-      kubeadm reset -f || true
-    fi
-
-    # clear out any old containers...
-    if command -v crictl &> /dev/null
-    then
-      crictl rm --force $(crictl ps -a -q) || true
-    fi
-
     # remove packages
     apt-mark unhold kubelet kubeadm kubectl kubernetes-cni || true
     # moby-runc is on github runner? have to remove it
@@ -246,6 +233,7 @@ function kubeadm_init(){
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
+### wait for nodes to be ready
 function wait_for_nodes(){
   echo "Waiting for nodes to be ready..."
   kubectl wait \
@@ -270,6 +258,7 @@ function configure_kubeconfig(){
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
+### check if worker services are running
 function check_worker_services(){
   echo "Check worker services"
   # Really until it's added to the kubernetes cluster only containerd
@@ -280,6 +269,8 @@ function check_worker_services(){
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
+### taint the node so that workloads can run on it, assuming there is only
+### one node in the cluster
 function configure_as_single_node(){
   echo "Configuring as a single node cluster"
   {
@@ -292,6 +283,7 @@ function configure_as_single_node(){
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
+### test if an nginx pod can be deployed to validate the cluster
 function test_nginx_pod(){
   echo "Deploying test nginx pod"
   {
