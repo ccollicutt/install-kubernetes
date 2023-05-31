@@ -79,9 +79,26 @@ function remove_packages(){
   } 3>&2 >> $LOG_FILE 2>&1 
 }
 
-### install packages
+### install required packages
 function install_packages(){
-  echo "Installing packages"
+  echo "Installing required packages"
+  {
+    apt-get update
+    apt-get install -y \
+      apt-transport-https \
+      ca-certificates \
+      curl \
+      gnupg \
+      lsb-release \
+      software-properties-common \
+      wget \
+      jq
+  } 3>&2 >> $LOG_FILE 2>&1
+}
+
+### install kubernetes packages
+function install_kubernetes_packages(){
+  echo "Installing Kubernetes packages"
   cat <<EOF > /etc/apt/sources.list.d/kubernetes.list
 deb http://apt.kubernetes.io/ kubernetes-xenial main
 EOF
@@ -343,6 +360,7 @@ function run_main(){
   disable_swap
   remove_packages
   install_packages
+  install_kubernetes_packages
   install_containerd
   configure_containerd
   configure_system
