@@ -68,19 +68,6 @@ function disable_swap(){
 function remove_packages(){
   echo "Removing packages"
   {
-
-    # clear out any old kubernetes 
-    if command -v kubeadm &> /dev/null
-    then
-      kubeadm reset -f || true
-    fi
-
-    # clear out any old containers...
-    if command -v crictl &> /dev/null
-    then
-      crictl rm --force $(crictl ps -a -q) || true
-    fi
-
     # remove packages
     apt-mark unhold kubelet kubeadm kubectl kubernetes-cni || true
     # moby-runc is on github runner? have to remove it
@@ -206,7 +193,7 @@ EOF
 function configure_kubelet(){
 echo "Configuring kubelet"
 cat <<EOF > /etc/default/kubelet
-KUBELET_EXTRA_ARGS="--container-runtime remote --container-runtime-endpoint unix:///run/containerd/containerd.sock"
+KUBELET_EXTRA_ARGS="--container-runtime-endpoint unix:///run/containerd/containerd.sock"
 EOF
 }
 
@@ -237,13 +224,16 @@ function install_cni(){
 ### initialize the control plane
 function kubeadm_init(){
   echo "Initializing the Kubernetes control plane"
-  kubeadm init \
+  {
+    kubeadm init \
     --kubernetes-version=${KUBE_VERSION} \
     --ignore-preflight-errors=NumCPU \
     --skip-token-print \
-    --pod-network-cidr 192.168.0.0/16 3>&2 >> $LOG_FILE 2>&1
+    --pod-network-cidr 192.168.0.0/16 
+  } 3>&2 >> $LOG_FILE 2>&1
 }
 
+### wait for nodes to be ready
 function wait_for_nodes(){
   echo "Waiting for nodes to be ready..."
   kubectl wait \
@@ -268,6 +258,7 @@ function configure_kubeconfig(){
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
+### check if worker services are running
 function check_worker_services(){
   echo "Check worker services"
   # Really until it's added to the kubernetes cluster only containerd
@@ -278,6 +269,8 @@ function check_worker_services(){
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
+### taint the node so that workloads can run on it, assuming there is only
+### one node in the cluster
 function configure_as_single_node(){
   echo "Configuring as a single node cluster"
   {
@@ -290,6 +283,7 @@ function configure_as_single_node(){
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
+### test if an nginx pod can be deployed to validate the cluster
 function test_nginx_pod(){
   echo "Deploying test nginx pod"
   {
@@ -305,6 +299,37 @@ function test_nginx_pod(){
     kubectl delete pod nginx --namespace default
   } 3>&2 >> $LOG_FILE 2>&1
 }
+
+### doublecheck the kubernetes version that is installed
+function test_kubernetes_version() {
+  echo "Checking Kubernetes version..."
+  kubectl_version=$(kubectl version -o json)
+
+  # use gitVersion
+  client_version=$(echo "$kubectl_version" | jq '.clientVersion.gitVersion' | tr -d '"')
+  server_version=$(echo "$kubectl_version" | jq '.serverVersion.gitVersion' | tr -d '"')
+
+  echo "==> Client version: $client_version"
+  echo "==> Server Version: $server_version"
+
+  # check if kubectl and server are the same version
+  if [[ "$client_version" != "$server_version" ]]; then
+    echo "==> Client and server versions differ, exiting..."
+    exit 1
+  fi
+
+  # check if what we asked for was what we got
+  local kube_version="v${KUBE_VERSION}"
+  if [[ "$kube_version" == "$server_version" ]]; then
+    echo "==> Requested KUBE_VERSION matches the server version."
+  else
+    echo "==> Requested KUBE_VERSION does not match the server version, exiting..."
+    exit 1
+  fi
+
+}
+
+
 
 #
 # MAIN
@@ -332,6 +357,8 @@ function run_main(){
     configure_kubeconfig
     install_cni
     wait_for_nodes
+    # now  test what was installed
+    test_kubernetes_version
     if [[ "${SINGLE_NODE}" == "true" ]]; then
       echo "Configuring as a single node cluster"
       configure_as_single_node
@@ -363,7 +390,7 @@ VERBOSE=false
 UBUNTU_VERSION=22.04
 
 # software versions
-KUBE_VERSION=1.26.3
+KUBE_VERSION=1.27.1
 CONTAINERD_VERSION=1.7.0
 CALICO_VERSION=3.25.0
 CALICO_URL="https://raw.githubusercontent.com/projectcalico/calico/v${CALICO_VERSION}/manifests/"
