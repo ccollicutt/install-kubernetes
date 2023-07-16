@@ -177,7 +177,7 @@ version = 2
     [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
       base_runtime_spec = ""
       container_annotations = []
-      pod_annotations = []
+      pod_annotations = [] 
       privileged_without_host_devices = false
       runtime_engine = ""
       runtime_root = ""
@@ -238,6 +238,14 @@ function install_cni(){
   done
 }
 
+function install_metrics_server(){
+  echo "Installing metrics server"
+  {
+    kubectl apply -f manifests/metrics-server.yaml
+    # TODO: wait for metrics server to be ready
+  } 3>&2 >> $LOG_FILE 2>&1
+}
+
 ### initialize the control plane
 function kubeadm_init(){
   echo "Initializing the Kubernetes control plane"
@@ -253,10 +261,12 @@ function kubeadm_init(){
 ### wait for nodes to be ready
 function wait_for_nodes(){
   echo "Waiting for nodes to be ready..."
-  kubectl wait \
-    --for=condition=Ready \
-    --all nodes \
-    --timeout=180s 3>&2 >> $LOG_FILE 2>&1
+  {
+    kubectl wait \
+      --for=condition=Ready \
+      --all nodes \
+      --timeout=180s
+  } 3>&2 >> $LOG_FILE 2>&1
   echo "==> Nodes are ready"
 }
 
@@ -377,6 +387,7 @@ function run_main(){
     wait_for_nodes
     # now  test what was installed
     test_kubernetes_version
+    install_metrics_server
     if [[ "${SINGLE_NODE}" == "true" ]]; then
       echo "Configuring as a single node cluster"
       configure_as_single_node
@@ -408,7 +419,7 @@ VERBOSE=false
 UBUNTU_VERSION=22.04
 
 # software versions
-KUBE_VERSION=1.27.1
+KUBE_VERSION=1.27.3
 CONTAINERD_VERSION=1.7.0
 CALICO_VERSION=3.25.0
 CALICO_URL="https://raw.githubusercontent.com/projectcalico/calico/v${CALICO_VERSION}/manifests/"
