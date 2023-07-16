@@ -387,6 +387,7 @@ function run_main(){
     wait_for_nodes
     # now  test what was installed
     test_kubernetes_version
+    install_metrics_server
     if [[ "${SINGLE_NODE}" == "true" ]]; then
       echo "Configuring as a single node cluster"
       configure_as_single_node
