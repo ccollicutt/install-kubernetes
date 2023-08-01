@@ -257,6 +257,12 @@ kubernetesVersion: v${KUBE_VERSION}
 networking:
   podSubnet: 192.168.0.0/16
 controlPlaneEndpoint: "localhost:6443"
+---
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+kubernetesVersion: v${KUBE_VERSION}
+networking:
+  podSubnet:
 EOF
     # use config file for kubeadm
     kubeadm init --config kubeadm-config.yaml
@@ -362,6 +368,18 @@ function test_kubernetes_version() {
 
 }
 
+### check what admission controllers are enabled
+function list_admission_controllers(){
+  echo "Checking admission controllers..."
+  {
+    kubectl get pods \
+      --namespace kube-system \
+      --output yaml \
+      kube-apiserver-controlplane \
+      | grep "admission-control"
+  } 3>&2 >> $LOG_FILE 2>&1
+}
+
 
 
 #
@@ -392,6 +410,7 @@ function run_main(){
     install_cni
     wait_for_nodes
     # now  test what was installed
+    list_admission_controllers
     test_kubernetes_version
     install_metrics_server
     if [[ "${SINGLE_NODE}" == "true" ]]; then
