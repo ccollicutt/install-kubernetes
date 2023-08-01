@@ -430,7 +430,7 @@ VERBOSE=false
 UBUNTU_VERSION=22.04
 
 # software versions
-KUBE_VERSION=1.27.3
+KUBE_VERSION=1.27.4
 CONTAINERD_VERSION=1.7.0
 CALICO_VERSION=3.25.0
 CALICO_URL="https://raw.githubusercontent.com/projectcalico/calico/v${CALICO_VERSION}/manifests/"
