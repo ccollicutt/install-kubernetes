@@ -257,12 +257,6 @@ kubernetesVersion: v${KUBE_VERSION}
 networking:
   podSubnet: 192.168.0.0/16
 controlPlaneEndpoint: "localhost:6443"
----
-apiVersion: kubeadm.k8s.io/v1beta3
-kind: ClusterConfiguration
-kubernetesVersion: v${KUBE_VERSION}
-networking:
-  podSubnet:
 EOF
     # use config file for kubeadm
     kubeadm init --config kubeadm-config.yaml
