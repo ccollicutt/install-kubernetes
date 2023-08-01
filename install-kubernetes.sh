@@ -248,15 +248,26 @@ function install_metrics_server(){
 
 ### initialize the control plane
 function kubeadm_init(){
-  echo "Initializing the Kubernetes control plane"
+  echo "Initialising the Kubernetes cluster via Kubeadm"
   {
-    kubeadm init \
-    --kubernetes-version=${KUBE_VERSION} \
-    --ignore-preflight-errors=NumCPU \
-    --skip-token-print \
-    --pod-network-cidr 192.168.0.0/16 
+    cat > kubeadm-config.yaml <<-EOF
+apiVersion: kubeadm.k8s.io/v1beta2
+kind: ClusterConfiguration
+kubernetesVersion: v${KUBE_VERSION}
+imageRepository: k8s.gcr.io
+networking:
+  podSubnet: 192.168.0.0/16
+controlPlaneEndpoint: "localhost:6443"
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+cgroupDriver: systemd
+EOF
+    # use config file for kubeadm
+    kubeadm init --config kubeadm-config.yaml
   } 3>&2 >> $LOG_FILE 2>&1
 }
+
 
 ### wait for nodes to be ready
 function wait_for_nodes(){
