@@ -251,7 +251,7 @@ function kubeadm_init(){
   echo "Initialising the Kubernetes cluster via Kubeadm"
   {
     cat > kubeadm-config.yaml <<-EOF
-apiVersion: kubeadm.k8s.io/v1beta2
+apiVersion: kubeadm.k8s.io/v1beta3
 kind: ClusterConfiguration
 kubernetesVersion: v${KUBE_VERSION}
 imageRepository: k8s.gcr.io
