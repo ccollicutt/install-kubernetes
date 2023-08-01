@@ -362,19 +362,33 @@ function test_kubernetes_version() {
 
 }
 
-### check what admission controllers are enabled
-function list_admission_controllers(){
-  echo "Checking admission controllers..."
+### apply pod security admission configuration
+function apply_pod_security(){
+  echo "Applying pod security admission configuration"
   {
-    kubectl get pods \
-      --namespace kube-system \
-      --output yaml \
-      kube-apiserver-controlplane \
-      | grep "admission-control"
+    cat > pod-security.yaml <<-EOF
+apiVersion: apiserver.config.k8s.io/v1
+kind: AdmissionConfiguration
+plugins:
+- name: PodSecurity
+  configuration:
+    apiVersion: pod-security.admission.config.k8s.io/v1
+    kind: PodSecurityConfiguration
+    defaults:
+      enforce: "baseline"
+      enforce-version: "latest"
+      audit: "restricted"
+      audit-version: "latest"
+      warn: "restricted"
+      warn-version: "latest"
+    exemptions:
+      usernames: []
+      runtimeClasses: []
+      namespaces: [kube-system]
+EOF
+    kubectl apply -f pod-security.yaml
   } 3>&2 >> $LOG_FILE 2>&1
 }
-
-
 
 #
 # MAIN
@@ -404,7 +418,6 @@ function run_main(){
     install_cni
     wait_for_nodes
     # now  test what was installed
-    list_admission_controllers
     test_kubernetes_version
     install_metrics_server
     if [[ "${SINGLE_NODE}" == "true" ]]; then
