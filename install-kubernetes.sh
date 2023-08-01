@@ -254,7 +254,6 @@ function kubeadm_init(){
 apiVersion: kubeadm.k8s.io/v1beta3
 kind: ClusterConfiguration
 kubernetesVersion: v${KUBE_VERSION}
-imageRepository: k8s.gcr.io
 networking:
   podSubnet: 192.168.0.0/16
 controlPlaneEndpoint: "localhost:6443"
