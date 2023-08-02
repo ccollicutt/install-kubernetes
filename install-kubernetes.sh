@@ -362,34 +362,6 @@ function test_kubernetes_version() {
 
 }
 
-### apply pod security admission configuration
-function apply_pod_security(){
-  echo "Applying pod security admission configuration"
-  {
-    cat > pod-security.yaml <<-EOF
-apiVersion: apiserver.config.k8s.io/v1
-kind: AdmissionConfiguration
-plugins:
-- name: PodSecurity
-  configuration:
-    apiVersion: pod-security.admission.config.k8s.io/v1
-    kind: PodSecurityConfiguration
-    defaults:
-      enforce: "baseline"
-      enforce-version: "latest"
-      audit: "restricted"
-      audit-version: "latest"
-      warn: "restricted"
-      warn-version: "latest"
-    exemptions:
-      usernames: []
-      runtimeClasses: []
-      namespaces: [kube-system]
-EOF
-    kubectl apply -f pod-security.yaml
-  } 3>&2 >> $LOG_FILE 2>&1
-}
-
 #
 # MAIN
 #
@@ -419,7 +391,6 @@ function run_main(){
     wait_for_nodes
     # now  test what was installed
     test_kubernetes_version
-    apply_pod_security
     install_metrics_server
     if [[ "${SINGLE_NODE}" == "true" ]]; then
       echo "Configuring as a single node cluster"
