@@ -248,15 +248,21 @@ function install_metrics_server(){
 
 ### initialize the control plane
 function kubeadm_init(){
-  echo "Initializing the Kubernetes control plane"
+  echo "Initialising the Kubernetes cluster via Kubeadm"
   {
-    kubeadm init \
-    --kubernetes-version=${KUBE_VERSION} \
-    --ignore-preflight-errors=NumCPU \
-    --skip-token-print \
-    --pod-network-cidr 192.168.0.0/16 
+    cat > kubeadm-config.yaml <<-EOF
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+kubernetesVersion: v${KUBE_VERSION}
+networking:
+  podSubnet: 192.168.0.0/16
+controlPlaneEndpoint: "localhost:6443"
+EOF
+    # use config file for kubeadm
+    kubeadm init --config kubeadm-config.yaml
   } 3>&2 >> $LOG_FILE 2>&1
 }
+
 
 ### wait for nodes to be ready
 function wait_for_nodes(){
@@ -356,8 +362,6 @@ function test_kubernetes_version() {
 
 }
 
-
-
 #
 # MAIN
 #
@@ -419,7 +423,7 @@ VERBOSE=false
 UBUNTU_VERSION=22.04
 
 # software versions
-KUBE_VERSION=1.27.3
+KUBE_VERSION=1.27.4
 CONTAINERD_VERSION=1.7.0
 CALICO_VERSION=3.25.0
 CALICO_URL="https://raw.githubusercontent.com/projectcalico/calico/v${CALICO_VERSION}/manifests/"
