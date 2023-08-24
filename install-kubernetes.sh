@@ -116,6 +116,8 @@ EOF
       kubeadm \
       kubectl \
       kubernetes-cni
+    echo "Listing all installed packages"
+    apt list --installed
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
