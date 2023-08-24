@@ -359,7 +359,7 @@ function test_kubernetes_version() {
     echo "==> Requested KUBE_VERSION matches the server version."
   else
     echo "==> Requested KUBE_VERSION does not match the server version, exiting..."
-    exit 1
+    false
   fi
 
 }
