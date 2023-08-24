@@ -350,7 +350,7 @@ function test_kubernetes_version() {
   # check if kubectl and server are the same version
   if [[ "$client_version" != "$server_version" ]]; then
     echo "==> Client and server versions differ, exiting..."
-    exit 1
+    false
   fi
 
   # check if what we asked for was what we got
