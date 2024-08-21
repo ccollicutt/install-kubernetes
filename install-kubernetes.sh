@@ -99,23 +99,24 @@ function install_packages(){
 ### install kubernetes packages
 function install_kubernetes_packages(){
   echo "Installing Kubernetes packages"
+  # Remove the old repository file if it exists
+  rm -f /etc/apt/sources.list.d/kubernetes.list
+  # Add the new repository
   cat <<EOF > /etc/apt/sources.list.d/kubernetes.list
-deb http://apt.kubernetes.io/ kubernetes-xenial main
+deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /
 EOF
   {
-    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+    # Download the new GPG key
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    # Update package list
     apt-get update
+    # Install Kubernetes packages
     apt-get install -y \
-      containerd \
-      kubelet=${KUBE_VERSION}-00 \
-      kubeadm=${KUBE_VERSION}-00 \
-      kubectl=${KUBE_VERSION}-00 \
-      kubernetes-cni
-    apt-mark hold  \
-      kubelet \
-      kubeadm \
-      kubectl \
-      kubernetes-cni
+      kubelet=${KUBE_VERSION}-* \
+      kubeadm=${KUBE_VERSION}-* \
+      kubectl=${KUBE_VERSION}-*
+    # Hold these packages at the installed version
+    apt-mark hold kubelet kubeadm kubectl
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
