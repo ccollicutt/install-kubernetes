@@ -73,7 +73,7 @@ function remove_packages(){
     # moby-runc is on github runner? have to remove it
     apt-get remove -y moby-buildx moby-cli moby-compose moby-containerd moby-engine moby-runc || true
     apt-get autoremove -y
-    apt-get remove -y docker.io containerd kubelet kubeadm kubectl kubernetes-cni || true
+    apt-get remove -y docker.io containerd kubelet kubeadm kubectl || true
     apt-get autoremove -y
     systemctl daemon-reload
   } 3>&2 >> $LOG_FILE 2>&1 
@@ -99,41 +99,24 @@ function install_packages(){
 ### install kubernetes packages
 function install_kubernetes_packages(){
   echo "Installing Kubernetes packages"
+  # Remove the old repository file if it exists
+  rm -f /etc/apt/sources.list.d/kubernetes.list
+  # Add the new repository
   cat <<EOF > /etc/apt/sources.list.d/kubernetes.list
-deb http://apt.kubernetes.io/ kubernetes-xenial main
+deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /
 EOF
   {
-    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+    # Download the new GPG key
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | sudo gpg --dearmor --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    # Update package list
     apt-get update
+    # Install Kubernetes packages
     apt-get install -y \
-      containerd \
-      kubelet=${KUBE_VERSION}-00 \
-      kubeadm=${KUBE_VERSION}-00 \
-      kubectl=${KUBE_VERSION}-00 \
-      kubernetes-cni
-    apt-mark hold  \
-      kubelet \
-      kubeadm \
-      kubectl \
-      kubernetes-cni
-  } 3>&2 >> $LOG_FILE 2>&1
-}
-
-### install containerd from binary over apt installed version
-function install_containerd(){
-  echo "Installing containerd"
-  # NOTE(curtis): to get containerd 1.7 deploy from tar file instead of apt
-  # think latest app is 1.6.12 
-  {
-    pushd ${TMP_DIR}
-      wget -q https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}-linux-amd64.tar.gz
-      tar xvf containerd-${CONTAINERD_VERSION}-linux-amd64.tar.gz
-      systemctl stop containerd
-      mv bin/* /usr/bin
-      rm -rf bin containerd-${CONTAINERD_VERSION}-linux-amd64.tar.gz
-    popd
-    systemctl unmask containerd
-    systemctl start containerd
+      kubelet=${KUBE_VERSION}-* \
+      kubeadm=${KUBE_VERSION}-* \
+      kubectl=${KUBE_VERSION}-*
+    # Hold these packages at the installed version
+    apt-mark hold kubelet kubeadm kubectl
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
@@ -156,7 +139,32 @@ EOF
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
-### containerd
+### crictl uses containerd as default
+function configure_crictl(){
+echo "Configuring crictl"
+cat <<EOF > /etc/crictl.yaml
+runtime-endpoint: unix:///run/containerd/containerd.sock
+EOF
+}
+
+### kubelet should use containerd
+function configure_kubelet(){
+echo "Configuring kubelet"
+cat <<EOF > /etc/default/kubelet
+KUBELET_EXTRA_ARGS="--container-runtime-endpoint unix:///run/containerd/containerd.sock"
+EOF
+}
+
+### install containerd
+function install_containerd() {
+  echo "Installing containerd"
+  {
+    apt-get update
+    apt-get install -y containerd
+  } 3>&2 >> $LOG_FILE 2>&1
+}
+
+### configure containerd
 function configure_containerd(){
   echo "Configuring containerd"
   sudo mkdir -p /etc/containerd 3>&2 >> $LOG_FILE 2>&1
@@ -198,22 +206,6 @@ version = 2
 EOF
 }
 
-### crictl uses containerd as default
-function configure_crictl(){
-echo "Configuring crictl"
-cat <<EOF > /etc/crictl.yaml
-runtime-endpoint: unix:///run/containerd/containerd.sock
-EOF
-}
-
-### kubelet should use containerd
-function configure_kubelet(){
-echo "Configuring kubelet"
-cat <<EOF > /etc/default/kubelet
-KUBELET_EXTRA_ARGS="--container-runtime-endpoint unix:///run/containerd/containerd.sock"
-EOF
-}
-
 ### start services
 function start_services(){
   echo "Starting services"
@@ -221,9 +213,6 @@ function start_services(){
     systemctl daemon-reload
     systemctl enable containerd
     systemctl restart containerd
-    # maybe this never worked...
-    # kubelet won't start without /var/lib/kubelet/config.yaml which won't exist yet,
-    # not until kubeadm init is run afaik
     systemctl enable kubelet && systemctl start kubelet
   } 3>&2 >> $LOG_FILE 2>&1
 }
@@ -333,6 +322,34 @@ function test_nginx_pod(){
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
+function wait_for_pods_running() {
+  echo "Waiting for all pods to be running..."
+  {
+    local timeout=300  # 5 minutes timeout
+    local start_time=$(date +%s)
+
+    while true; do
+      local not_running=$(kubectl get pods --all-namespaces --no-headers | grep -v "Running" | wc -l)
+      if [ $not_running -eq 0 ]; then
+        echo "All pods are running!"
+        return 0
+      fi
+
+      local current_time=$(date +%s)
+      local elapsed_time=$((current_time - start_time))
+      
+      if [ $elapsed_time -ge $timeout ]; then
+        echo "Timeout reached. Not all pods are running."
+        kubectl get pods --all-namespaces
+        return 1
+      fi
+
+      echo "Waiting for $not_running pods to be in Running state..."
+      sleep 10
+    done 
+  } 3>&2 >> $LOG_FILE 2>&1
+}
+
 ### doublecheck the kubernetes version that is installed
 function test_kubernetes_version() {
   echo "Checking Kubernetes version..."
@@ -375,11 +392,11 @@ function run_main(){
   remove_packages
   install_packages
   install_kubernetes_packages
-  install_containerd
-  configure_containerd
   configure_system
   configure_crictl
   configure_kubelet
+  configure_containerd
+  install_containerd
   start_services
 
   # only run this on the control plane node
@@ -396,6 +413,7 @@ function run_main(){
       echo "Configuring as a single node cluster"
       configure_as_single_node
       test_nginx_pod
+      wait_for_pods_running
     fi
     echo "Install complete!"
 
@@ -423,8 +441,8 @@ VERBOSE=false
 UBUNTU_VERSION=22.04
 
 # software versions
-KUBE_VERSION=1.28.0
-CONTAINERD_VERSION=1.7.0
+KUBE_VERSION=1.31.0
+CONTAINERD_VERSION=1.7.20
 CALICO_VERSION=3.25.0
 CALICO_URL="https://raw.githubusercontent.com/projectcalico/calico/v${CALICO_VERSION}/manifests/"
 
