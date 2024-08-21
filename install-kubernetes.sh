@@ -92,8 +92,7 @@ function install_packages(){
       lsb-release \
       software-properties-common \
       wget \
-      jq \
-      containerd
+      jq
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
@@ -153,6 +152,57 @@ function configure_kubelet(){
 echo "Configuring kubelet"
 cat <<EOF > /etc/default/kubelet
 KUBELET_EXTRA_ARGS="--container-runtime-endpoint unix:///run/containerd/containerd.sock"
+EOF
+}
+
+### install containerd
+function install_containerd() {
+  echo "Installing containerd"
+  {
+    apt-get update
+    apt-get install -y containerd
+  } 3>&2 >> $LOG_FILE 2>&1
+}
+
+### configure containerd
+function configure_containerd(){
+  echo "Configuring containerd"
+  sudo mkdir -p /etc/containerd 3>&2 >> $LOG_FILE 2>&1
+### config.toml
+cat > /etc/containerd/config.toml <<EOF
+disabled_plugins = []
+imports = []
+oom_score = 0
+plugin_dir = ""
+required_plugins = []
+root = "/var/lib/containerd"
+state = "/run/containerd"
+version = 2
+
+[plugins]
+
+  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+      base_runtime_spec = ""
+      container_annotations = []
+      pod_annotations = [] 
+      privileged_without_host_devices = false
+      runtime_engine = ""
+      runtime_root = ""
+      runtime_type = "io.containerd.runc.v2"
+
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+        BinaryName = ""
+        CriuImagePath = ""
+        CriuPath = ""
+        CriuWorkPath = ""
+        IoGid = 0
+        IoUid = 0
+        NoNewKeyring = false
+        NoPivotRoot = false
+        Root = ""
+        ShimCgroup = ""
+        SystemdCgroup = true
 EOF
 }
 
@@ -317,6 +367,8 @@ function run_main(){
   configure_system
   configure_crictl
   configure_kubelet
+  configure_containerd
+  install_containerd
   start_services
 
   # only run this on the control plane node
