@@ -92,7 +92,8 @@ function install_packages(){
       lsb-release \
       software-properties-common \
       wget \
-      jq
+      jq \
+      containerd
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
@@ -120,24 +121,6 @@ EOF
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
-### install containerd from binary over apt installed version
-function install_containerd(){
-  echo "Installing containerd"
-  # NOTE(curtis): to get containerd 1.7 deploy from tar file instead of apt
-  # think latest app is 1.6.12 
-  {
-    pushd ${TMP_DIR}
-      wget -q https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}-linux-amd64.tar.gz
-      tar xvf containerd-${CONTAINERD_VERSION}-linux-amd64.tar.gz
-      systemctl stop containerd
-      mv bin/* /usr/bin
-      rm -rf bin containerd-${CONTAINERD_VERSION}-linux-amd64.tar.gz
-    popd
-    systemctl unmask containerd
-    systemctl start containerd
-  } 3>&2 >> $LOG_FILE 2>&1
-}
-
 ### set required sysctl params, these persist across reboots
 function configure_system(){
   echo "Configuring system"
@@ -155,48 +138,6 @@ EOF
     sudo modprobe br_netfilter
     sudo sysctl --system
   } 3>&2 >> $LOG_FILE 2>&1
-}
-
-### containerd
-function configure_containerd(){
-  echo "Configuring containerd"
-  sudo mkdir -p /etc/containerd 3>&2 >> $LOG_FILE 2>&1
-### config.toml
-cat > /etc/containerd/config.toml <<EOF
-disabled_plugins = []
-imports = []
-oom_score = 0
-plugin_dir = ""
-required_plugins = []
-root = "/var/lib/containerd"
-state = "/run/containerd"
-version = 2
-
-[plugins]
-
-  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
-    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
-      base_runtime_spec = ""
-      container_annotations = []
-      pod_annotations = [] 
-      privileged_without_host_devices = false
-      runtime_engine = ""
-      runtime_root = ""
-      runtime_type = "io.containerd.runc.v2"
-
-      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
-        BinaryName = ""
-        CriuImagePath = ""
-        CriuPath = ""
-        CriuWorkPath = ""
-        IoGid = 0
-        IoUid = 0
-        NoNewKeyring = false
-        NoPivotRoot = false
-        Root = ""
-        ShimCgroup = ""
-        SystemdCgroup = true
-EOF
 }
 
 ### crictl uses containerd as default
@@ -222,9 +163,6 @@ function start_services(){
     systemctl daemon-reload
     systemctl enable containerd
     systemctl restart containerd
-    # maybe this never worked...
-    # kubelet won't start without /var/lib/kubelet/config.yaml which won't exist yet,
-    # not until kubeadm init is run afaik
     systemctl enable kubelet && systemctl start kubelet
   } 3>&2 >> $LOG_FILE 2>&1
 }
@@ -376,8 +314,6 @@ function run_main(){
   remove_packages
   install_packages
   install_kubernetes_packages
-  install_containerd
-  configure_containerd
   configure_system
   configure_crictl
   configure_kubelet
