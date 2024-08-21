@@ -413,6 +413,7 @@ function run_main(){
       echo "Configuring as a single node cluster"
       configure_as_single_node
       test_nginx_pod
+      wait_for_pods_running
     fi
     echo "Install complete!"
 
