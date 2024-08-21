@@ -322,6 +322,34 @@ function test_nginx_pod(){
   } 3>&2 >> $LOG_FILE 2>&1
 }
 
+function wait_for_pods_running() {
+  echo "Waiting for all pods to be running..."
+  {
+    local timeout=300  # 5 minutes timeout
+    local start_time=$(date +%s)
+
+    while true; do
+      local not_running=$(kubectl get pods --all-namespaces --no-headers | grep -v "Running" | wc -l)
+      if [ $not_running -eq 0 ]; then
+        echo "All pods are running!"
+        return 0
+      fi
+
+      local current_time=$(date +%s)
+      local elapsed_time=$((current_time - start_time))
+      
+      if [ $elapsed_time -ge $timeout ]; then
+        echo "Timeout reached. Not all pods are running."
+        kubectl get pods --all-namespaces
+        return 1
+      fi
+
+      echo "Waiting for $not_running pods to be in Running state..."
+      sleep 10
+    done 
+  } 3>&2 >> $LOG_FILE 2>&1
+}
+
 ### doublecheck the kubernetes version that is installed
 function test_kubernetes_version() {
   echo "Checking Kubernetes version..."
