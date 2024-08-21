@@ -73,7 +73,7 @@ function remove_packages(){
     # moby-runc is on github runner? have to remove it
     apt-get remove -y moby-buildx moby-cli moby-compose moby-containerd moby-engine moby-runc || true
     apt-get autoremove -y
-    apt-get remove -y docker.io containerd kubelet kubeadm kubectl kubernetes-cni || true
+    apt-get remove -y docker.io containerd kubelet kubeadm kubectl || true
     apt-get autoremove -y
     systemctl daemon-reload
   } 3>&2 >> $LOG_FILE 2>&1 
@@ -103,11 +103,11 @@ function install_kubernetes_packages(){
   rm -f /etc/apt/sources.list.d/kubernetes.list
   # Add the new repository
   cat <<EOF > /etc/apt/sources.list.d/kubernetes.list
-deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /
+deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /
 EOF
   {
     # Download the new GPG key
-    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | sudo gpg --dearmor --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
     # Update package list
     apt-get update
     # Install Kubernetes packages
@@ -424,7 +424,7 @@ VERBOSE=false
 UBUNTU_VERSION=22.04
 
 # software versions
-KUBE_VERSION=1.28.0
+KUBE_VERSION=1.31.0
 CONTAINERD_VERSION=1.7.0
 CALICO_VERSION=3.25.0
 CALICO_URL="https://raw.githubusercontent.com/projectcalico/calico/v${CALICO_VERSION}/manifests/"
