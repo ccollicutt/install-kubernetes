@@ -61,7 +61,7 @@ function disable_swap(){
   {
     swapoff -a
     sed -i '/\sswap\s/ s/^\(.*\)$/#\1/g' /etc/fstab
-  } 3>&2 >> $LOG_FILE 2>&1
+  } >> $LOG_FILE 2>&1
 }
 
 ### remove packages
@@ -76,7 +76,7 @@ function remove_packages(){
     apt-get remove -y docker.io containerd kubelet kubeadm kubectl || true
     apt-get autoremove -y
     systemctl daemon-reload
-  } 3>&2 >> $LOG_FILE 2>&1 
+  } >> $LOG_FILE 2>&1
 }
 
 ### install required packages
@@ -93,7 +93,7 @@ function install_packages(){
       software-properties-common \
       wget \
       jq
-  } 3>&2 >> $LOG_FILE 2>&1
+  } >> $LOG_FILE 2>&1
 }
 
 ### install kubernetes packages
@@ -117,7 +117,7 @@ EOF
       kubectl=${KUBE_VERSION}-*
     # Hold these packages at the installed version
     apt-mark hold kubelet kubeadm kubectl
-  } 3>&2 >> $LOG_FILE 2>&1
+  } >> $LOG_FILE 2>&1
 }
 
 ### set required sysctl params, these persist across reboots
@@ -136,7 +136,7 @@ EOF
     sudo modprobe overlay
     sudo modprobe br_netfilter
     sudo sysctl --system
-  } 3>&2 >> $LOG_FILE 2>&1
+  } >> $LOG_FILE 2>&1
 }
 
 ### crictl uses containerd as default
@@ -161,13 +161,13 @@ function install_containerd() {
   {
     apt-get update
     apt-get install -y containerd
-  } 3>&2 >> $LOG_FILE 2>&1
+  } >> $LOG_FILE 2>&1
 }
 
 ### configure containerd
 function configure_containerd(){
   echo "Configuring containerd"
-  sudo mkdir -p /etc/containerd 3>&2 >> $LOG_FILE 2>&1
+  sudo mkdir -p /etc/containerd >> $LOG_FILE 2>&1
 ### config.toml
 cat > /etc/containerd/config.toml <<EOF
 disabled_plugins = []
@@ -185,7 +185,7 @@ version = 2
     [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
       base_runtime_spec = ""
       container_annotations = []
-      pod_annotations = [] 
+      pod_annotations = []
       privileged_without_host_devices = false
       runtime_engine = ""
       runtime_root = ""
@@ -214,7 +214,7 @@ function start_services(){
     systemctl enable containerd
     systemctl restart containerd
     systemctl enable kubelet && systemctl start kubelet
-  } 3>&2 >> $LOG_FILE 2>&1
+  } >> $LOG_FILE 2>&1
 }
 
 ### install calico as the CNI
@@ -223,7 +223,7 @@ function install_cni(){
   echo "Installing Calico CNI"
   for manifest in tigera-operator custom-resources; do
     echo "==> Installing Calico ${manifest}"
-    kubectl create -f ${CALICO_URL}/${manifest}.yaml 3>&2 >> $LOG_FILE 2>&1
+    kubectl create -f ${CALICO_URL}/${manifest}.yaml >> $LOG_FILE 2>&1
   done
 }
 
@@ -232,7 +232,7 @@ function install_metrics_server(){
   {
     kubectl apply -f manifests/metrics-server.yaml
     # TODO: wait for metrics server to be ready
-  } 3>&2 >> $LOG_FILE 2>&1
+  } >> $LOG_FILE 2>&1
 }
 
 ### initialize the control plane
@@ -249,7 +249,7 @@ controlPlaneEndpoint: "localhost:6443"
 EOF
     # use config file for kubeadm
     kubeadm init --config kubeadm-config.yaml
-  } 3>&2 >> $LOG_FILE 2>&1
+  } >> $LOG_FILE 2>&1
 }
 
 
@@ -261,7 +261,7 @@ function wait_for_nodes(){
       --for=condition=Ready \
       --all nodes \
       --timeout=180s
-  } 3>&2 >> $LOG_FILE 2>&1
+  } >> $LOG_FILE 2>&1
   echo "==> Nodes are ready"
 }
 
@@ -277,7 +277,7 @@ function configure_kubeconfig(){
     cp -i /etc/kubernetes/admin.conf /root/.kube/config
     cp -i /etc/kubernetes/admin.conf /home/ubuntu/.kube/config || true
     chown ubuntu:ubuntu /home/ubuntu/.kube/config || true
-  } 3>&2 >> $LOG_FILE 2>&1
+  } >> $LOG_FILE 2>&1
 }
 
 ### check if worker services are running
@@ -288,7 +288,7 @@ function check_worker_services(){
   {
     echo "==> Checking containerd"
     systemctl is-active containerd
-  } 3>&2 >> $LOG_FILE 2>&1
+  } >> $LOG_FILE 2>&1
 }
 
 ### taint the node so that workloads can run on it, assuming there is only
@@ -302,7 +302,7 @@ function configure_as_single_node(){
       node-role.kubernetes.io/control-plane:NoSchedule-
     echo "==> Sleeping for 10 seconds to allow taint to take effect..."
     sleep 10 # wait for the taint to take effect
-  } 3>&2 >> $LOG_FILE 2>&1
+  } >> $LOG_FILE 2>&1
 }
 
 ### test if an nginx pod can be deployed to validate the cluster
@@ -319,7 +319,7 @@ function test_nginx_pod(){
       --timeout=180s
     # delete the nginx pod
     kubectl delete pod nginx --namespace default
-  } 3>&2 >> $LOG_FILE 2>&1
+  } >> $LOG_FILE 2>&1
 }
 
 function wait_for_pods_running() {
@@ -337,7 +337,7 @@ function wait_for_pods_running() {
 
       local current_time=$(date +%s)
       local elapsed_time=$((current_time - start_time))
-      
+
       if [ $elapsed_time -ge $timeout ]; then
         echo "Timeout reached. Not all pods are running."
         kubectl get pods --all-namespaces
@@ -346,8 +346,8 @@ function wait_for_pods_running() {
 
       echo "Waiting for $not_running pods to be in Running state..."
       sleep 10
-    done 
-  } 3>&2 >> $LOG_FILE 2>&1
+    done
+  } >> $LOG_FILE 2>&1
 }
 
 ### doublecheck the kubernetes version that is installed
@@ -476,4 +476,3 @@ then
     echo "### Log file ###"
     cat $LOG_FILE
   fi
-fi
