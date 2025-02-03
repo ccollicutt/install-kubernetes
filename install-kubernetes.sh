@@ -239,13 +239,22 @@ function install_metrics_server(){
 function kubeadm_init(){
   echo "Initialising the Kubernetes cluster via Kubeadm"
   {
+    # Get the IP address of the main interface
+    MAIN_IP=$(ip route get 1 | awk '{print $7;exit}')
+    
+    # Validate that MAIN_IP is actually an IP address
+    if ! [[ $MAIN_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+      echo "Error: Could not determine main interface IP address" >&2
+      exit 1
+    fi
+    
     cat > kubeadm-config.yaml <<-EOF
 apiVersion: kubeadm.k8s.io/v1beta3
 kind: ClusterConfiguration
 kubernetesVersion: v${KUBE_VERSION}
 networking:
   podSubnet: 192.168.0.0/16
-controlPlaneEndpoint: "localhost:6443"
+controlPlaneEndpoint: "${MAIN_IP}:6443"
 EOF
     # use config file for kubeadm
     kubeadm init --config kubeadm-config.yaml
@@ -359,21 +368,21 @@ function test_kubernetes_version() {
   client_version=$(echo "$kubectl_version" | jq '.clientVersion.gitVersion' | tr -d '"')
   server_version=$(echo "$kubectl_version" | jq '.serverVersion.gitVersion' | tr -d '"')
 
-  echo "==> Client version: $client_version"
-  echo "==> Server Version: $server_version"
+  echo "Client version: $client_version"
+  echo "Server Version: $server_version"
 
   # check if kubectl and server are the same version
   if [[ "$client_version" != "$server_version" ]]; then
-    echo "==> Client and server versions differ, exiting..."
+    echo "Client and server versions differ, exiting..."
     exit 1
   fi
 
   # check if what we asked for was what we got
   local kube_version="v${KUBE_VERSION}"
   if [[ "$kube_version" == "$server_version" ]]; then
-    echo "==> Requested KUBE_VERSION matches the server version."
+    echo "Requested KUBE_VERSION matches the server version."
   else
-    echo "==> Requested KUBE_VERSION does not match the server version, exiting..."
+    echo "Requested KUBE_VERSION does not match the server version, exiting..."
     exit 1
   fi
 
@@ -386,7 +395,7 @@ function test_kubernetes_version() {
 ### run the whole thing
 function run_main(){
   echo "Starting install..."
-  echo "==> Logging all output to $LOG_FILE"
+  echo "Logging all output to $LOG_FILE"
   check_linux_distribution
   disable_swap
   remove_packages
@@ -457,8 +466,8 @@ while getopts "h?cvs" opt; do
       show_help
       exit 0
       ;;
-    c)  CONTROL_NODE=true
-        WORKER_NODE=false
+    c) CONTROL_NODE=true
+       WORKER_NODE=false
       ;;
     v) VERBOSE=true
       ;;
