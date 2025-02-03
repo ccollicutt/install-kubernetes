@@ -110,8 +110,8 @@ EOF
     curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | sudo gpg --dearmor --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
     # Update package list
     apt-get update
-    # Install Kubernetes packages
-    apt-get install -y \
+    # Install Kubernetes packages with --allow-downgrades flag
+    apt-get install -y --allow-downgrades \
       kubelet=${KUBE_VERSION}-* \
       kubeadm=${KUBE_VERSION}-* \
       kubectl=${KUBE_VERSION}-*
