@@ -54,6 +54,7 @@ Normally you would have one control plane node and `x` worker nodes.
 On a control plane node run:
 
 ```
+apt update && apt install git -y # optional if not already installed
 git clone https://github.com/ccollicutt/install-kubernetes
 cd install-kubernetes
 # Note the "-c" switch here
